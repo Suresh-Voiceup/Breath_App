@@ -1,0 +1,17 @@
+{
+  "name": "breathtaking",
+  "version": "1.0.0",
+  "description": "breath taking calculator app ",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "suresh",
+  "license": "ISC",
+  "dependencies": {
+    "@google-cloud/storage": "^1.6.0",
+    "express": "^4.16.2",
+    "firebase": "^4.10.1",
+    "multer": "^1.3.0",
+  }
+}
