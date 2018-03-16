@@ -129,7 +129,7 @@ new CronJob('* * * * * *', function() {
   fs.readFile("config.txt", "utf8", function (err, content) {
           if(content === "TRUE"){
             //  console.log(content);
-           imageAnalysis();
+           //imageAnalysis();
           }
         /*  var stream = fs.createWriteStream("config.txt");
             stream.once('open', function(fd) {
@@ -149,6 +149,14 @@ async function asyncForEach(array, callback) {
 /*
 Node js code to run the image analysis by rscript
 */
+
+var http = require('http');
+var fs = require('fs');
+
+var file = fs.createWriteStream("file.jpg");
+var request = http.get("http://i3.ytimg.com/vi/J---aiyznGQ/mqdefault.jpg", function(response) {
+  response.pipe(file);
+});
 
 var push_array = [];
 var count  ;
