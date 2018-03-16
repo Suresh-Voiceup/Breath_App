@@ -10,98 +10,6 @@ var CronJob = require('cron').CronJob;
 var async = require('async');
 var fs = require('fs');
 
-
-/*
-var Jimp = require("jimp");
-
-var myArr = new Array();
-myArr[0] = new Array(2,1, 5);
-myArr[1] = new Array(3,1, 4);
-
-
-
-function average(data){
-  var sum = data.reduce(function(sum, value){
-    return sum + value;
-  }, 0);
-
-  var avg = sum / data.length;
-  return avg;
-}
-
-function standardDeviation(values){
-  var avg = average(values);
-  var squareDiffs = values.map(function(value){
-    var diff = value - avg;
-    var sqrDiff = diff * diff;
-    return sqrDiff;
-  });
-
-  var avgSquareDiff = average(squareDiffs);
-
-  var stdDev = Math.sqrt(avgSquareDiff);
-  return stdDev;
-}
-
-function average(data){
-  var sum = data.reduce(function(sum, value){
-    return sum + value;
-  }, 0);
-
-  var avg = sum / data.length;
-  return avg;
-}
-
-function shuffle(array) {
-  var currentIndex = array.length, temporaryValue, randomIndex;
-  // While there remain elements to shuffle...
-  while (0 !== currentIndex) {
-    // Pick a remaining element...
-    randomIndex = Math.floor(Math.random() * currentIndex);
-    currentIndex -= 1;
-    // And swap it with the current element.
-    temporaryValue = array[currentIndex];
-    array[currentIndex] = array[randomIndex];
-    array[randomIndex] = temporaryValue;
-  }
-  return array;
-}
-
-/* var arr = [2, 11, 37, 42];
-a = shuffle(arr);
-console.log(a);
-console.log(average(a));
-console.log(standardDeviation(a));
-*/
-
-/*Jimp.read("1520316960165.jpg").then(function (image) {
-    // do stuff with the image
-  //  console.log(image);
-  //  console.log(image.bitmap.width);
-    console.log(image.bitmap.data);
-    var imgGrey = image.greyscale();
-    console.log(imgGrey);
-   imgGrey.scan(0, 0, imgGrey.bitmap.width, imgGrey.bitmap.height, function (x, y, idx) {
-    // x, y is the position of this pixel on the image
-    // idx is the position start position of this rgba tuple in the bitmap Buffer
-    // this is the image
-
-    var red   = this.bitmap.data[ idx + 0 ];
-    var green = this.bitmap.data[ idx + 1 ];
-    var blue  = this.bitmap.data[ idx + 2 ];
-    var alpha = this.bitmap.data[ idx + 3 ];
-    console.log(alpha);
-
-    // rgba values run from 0 - 255
-    // e.g. this.bitmap.data[idx] = 0; // removes red from this pixel
-   });
-
-}).catch(function (err) {
-    // handle an exception
-});
-
-*/
-
 // client account
 /* const storage = googleStorage({
   projectId: "sincere-point-194021",
@@ -129,13 +37,8 @@ new CronJob('* * * * * *', function() {
   fs.readFile("config.txt", "utf8", function (err, content) {
           if(content === "TRUE"){
             //  console.log(content);
-           //imageAnalysis();
+              imageAnalysis();
           }
-        /*  var stream = fs.createWriteStream("config.txt");
-            stream.once('open', function(fd) {
-            stream.write("TRUE");
-            stream.end();});
-            */
   });
 }, null, true, 'America/Los_Angeles');
 
@@ -149,14 +52,9 @@ async function asyncForEach(array, callback) {
 /*
 Node js code to run the image analysis by rscript
 */
-
-var http = require('http');
+var https = require('https');
 var fs = require('fs');
-
-var file = fs.createWriteStream("file.jpg");
-var request = http.get("http://i3.ytimg.com/vi/J---aiyznGQ/mqdefault.jpg", function(response) {
-  response.pipe(file);
-});
+var request = require('request-promise');
 
 var push_array = [];
 var count  ;
@@ -185,76 +83,88 @@ function imageAnalysis() {
                       var commands = [];   var promises = [];
                       var stdout = [];
                       Promise.all(arrayofdata).then(function(push_array) {
+                        var files = []; var filesList = [];
+                        var i =0;
                         async.forEach(push_array, function(col, callback){
                           var metadata = col[0] ;
                           var base_link = imageUrl+metadata.name+"?alt=media";
-                          var cmd = 'Rscript ex-sync.R '+base_link + " "+metadata.metadata.deviceID+ " "+metadata.name+ " "+metadata.metadata.sessionID;
-                          //  var logr = execute(cmd);
-                          //  promises.push(logr);
+                          var cmd = 'Rscript ex-sync.R '+ metadata.name + " "+metadata.metadata.deviceID+ " "+metadata.metadata.sessionID;
                           commands.push(cmd);
-                         //  console.log("after execution "+logr);
+                          let req = request(base_link);
+                          req.pipe(fs.createWriteStream(metadata.name));
+                          files.push(req);
+                          filesList.push(metadata.name);
                          });
 
-                         /* Promise.all(promises).then(function(resultd) {
-                           console.log("after all the promsies resolved");
-                         }); */
+                           Promise.all(files).then(function(resultd) {
+                           console.log("after all the promsies resolved"+resultd.length);
 
-                         console.log("commands "+commands.length);
-                         runCommands(commands, function(err, jsonItems) {
-                           var asyncTask = []; var asyncDelete = []; var asyncMoveNotDetected=[];var asyncMoveDetected=[];
-                           var fcm = new FCM(serverKey);
-                           async.forEach(jsonItems, function(data, callback){
-                             console.log("R script response "+data);
-                             var status = JSON.stringify(data).split(" ");
-                              console.log(status);
-                              if(status.length === 6){
-                                  var finalStaus = status[1].split('\\')[0];
-                                  var main_link = status[2].split('"')[1].split('\\')[0];
-                                  var token = status[3].split('\\')[1].split("\"")[1];
-                                  var filename = status[4].split('\\')[1].split("\"")[1];
-                                  var sessionID = status[5].split('\\')[1].split("\"")[1];
-                                  if (finalStaus.toLowerCase() ==="false") {
-                                    var message = {
-                                        to: token, // required fill with device token or topics
-                                        priority : "high",
-                                        collapse_key: 'your_collapse_key',
-                                        data: {
-                                            your_custom_data_key: 'your_custom_data_value',
-                                            sessionID : sessionID
+                           runCommands(commands, function(err, jsonItems) {
+                                var asyncTask = []; var asyncDelete = []; var asyncMoveNotDetected=[];var asyncMoveDetected=[];
+                                var fcm = new FCM(serverKey);
+                                async.forEach(jsonItems, function(data, callback){
+                                  console.log("R script response "+data);
+                                  var status = JSON.stringify(data).split(" ");
+                                   console.log(status.length);
+                                   if(status.length === 5){
+                                     console.log("inside");
+                                       var finalStaus = status[1].split('\\')[0];
+                                       var filename = status[2].split('"')[1].split('\\')[0];
+                                       var token = status[3].split('\\')[1].split("\"")[1];
+                                       var sessionID = status[4].split('\\')[1].split("\"")[1];
+                                       //var sessionID = status[5].split('\\')[1].split("\"")[1];
+                                       if (finalStaus.toLowerCase() ==="false") {
+                                         var message = {
+                                             to: token, // required fill with device token or topics
+                                             priority : "high",
+                                             collapse_key: 'your_collapse_key',
+                                             data: {
+                                                 your_custom_data_key: 'your_custom_data_value',
+                                                 sessionID : sessionID
+                                             }
+                                          };
+                                          asyncTask.push(fcm.send(message));
+                                          asyncMoveNotDetected.push(storage.bucket(bucketName).file(filename).copy(storage.bucket(destinationBucket).file(filename)));
+                                          asyncDelete.push(filename);
+                                        }else {
+                                          asyncMoveNotDetected.push(storage.bucket(bucketName).file(filename).copy(storage.bucket(destinationBreathDitectedBucket).file(filename)));
+                                          asyncDelete.push(filename);
                                         }
-                                     };
-                                     asyncTask.push(fcm.send(message));
-                                     asyncMoveNotDetected.push(storage.bucket(bucketName).file(filename).copy(storage.bucket(destinationBucket).file(filename)));
-                                    // asyncDelete.push(storage.bucket(bucketName).file(filename).delete());
-                                    asyncDelete.push(filename);
-                                   }else {
-                                     asyncMoveNotDetected.push(storage.bucket(bucketName).file(filename).copy(storage.bucket(destinationBreathDitectedBucket).file(filename)));
-                                    // asyncDelete.push(storage.bucket(bucketName).file(filename).delete());
-                                    asyncDelete.push(filename);
-                                   }
-                                }
-                            });
+                                     }
+                                 });
 
-                            Promise.all(asyncMoveNotDetected).then((moveRsultDnot) => {
-                              console.log("all moved");
-                              }).then(function(asyncTask){
-                                console.log("all push sent");
-                                  var asyncDeleteFiles = [];
-                                  async.forEach(asyncDelete, function(filename, callback){
-                                    asyncDeleteFiles.push(storage.bucket(bucketName).file(filename).delete());
-                                  });
-                                  Promise.all(asyncDeleteFiles).then((moveRsultDnot) => {
-                                    console.log("all files deleted.");
-                                    rewriteFile();
-                                  }).catch(err => {
-                                    console.error('ERROR:', err);
-                                    rewriteFile();
-                                  });;
-                              }).catch(err => {
-                                console.error('ERROR:', err);
-                                rewriteFile();
-                              });
-                           });
+                                 Promise.all(asyncMoveNotDetected).then((moveRsultDnot) => {
+                                   console.log("all moved");
+                                   }).then(function(asyncTask){
+                                       console.log("all push sent");
+                                       var asyncDeleteFiles = [];
+                                       async.forEach(asyncDelete, function(filename, callback){
+                                         asyncDeleteFiles.push(storage.bucket(bucketName).file(filename).delete());
+                                       });
+
+                                       console.log("delete length"+asyncDeleteFiles.length);
+                                       Promise.all(asyncDeleteFiles).then((moveRsultDnot) => {
+                                         console.log("all files deleted."+moveRsultDnot);
+                                          async.forEach(filesList, function(filename, callback){
+                                             fs.unlinkSync(filename);
+                                           });
+                                         rewriteFile();
+                                       }).catch(err => {
+                                         console.error('ERROR:', err);
+                                         rewriteFile();
+                                       });;
+
+
+                                   }).catch(err => {
+                                     console.error('ERROR:', err);
+                                     rewriteFile();
+                                   });
+                                });
+                          }).catch(err => {
+                           console.error('ERROR:', err);
+                           rewriteFile();
+                         });
+                         console.log("commands "+commands.length);
                       }).catch(err => {
                         console.error('ERROR:', err);
                         rewriteFile();
@@ -295,96 +205,6 @@ function execute(script) {
     });
 }
 
-/*
-do call the r script with each items
-*/
-function callRscript(push_array){
- var  commands = [];
- console.log("calling r script");
- async.forEach(push_array, function(col, callback){
- var cmd = 'Rscript ex-sync.R '+col["link"] + " "+col["token"]+ " "+col["filename"]+ " "+col["sessionID"];
-  commands.push(cmd);
-  console.log(col["token"]);
-});
-console.log(commands);
-
-
-runCommands(commands, function(err, jsonItems) {
-  var asyncTask = []; var asyncDelete = []; var asyncMoveNotDetected=[];var asyncMoveDetected=[];
-  async.forEach(jsonItems, function(data, callback){
-    var status = JSON.stringify(data).split(" ");
-     if(status){
-      console.log(status);
-         var finalStaus = status[1].split('\\')[0];
-         var main_link = status[2].split('"')[1].split('\\')[0];
-         var token = status[3].split('\\')[1].split("\"")[1];
-         var filename = status[4].split('\\')[1].split("\"")[1];
-         var sessionID = status[5].split('\\')[1].split("\"")[1];
-         if (finalStaus.toLowerCase() ==="false") {
-           var message = {
-               to: token, // required fill with device token or topics
-               priority : "high",
-               collapse_key: 'your_collapse_key',
-               data: {
-                   your_custom_data_key: 'your_custom_data_value',
-                   sessionID : sessionID
-               }
-            };
-          asyncTask.push(fcm.send(message));
-          asyncDelete.push(storage.bucket(bucketName).file(filename).delete());
-          asyncMoveNotDetected.push(storage.bucket(bucketName).file(filename).copy(storage.bucket(destinationBucket).file(filename)));
-        }else {
-          asyncDelete.push(storage.bucket(bucketName).file(filename).delete());
-          asyncMoveNotDetected.push(storage.bucket(bucketName).file(filename).copy(storage.bucket(destinationBreathDitectedBucket).file(filename)));
-        }
-      /*  if(filename){
-           asyncDelete.push(storage.bucket(bucketName).file(filename).delete());
-         }
-         */
-      }
-   });
-
-   Promise.all(asyncMoveNotDetected).then((deleteresultDnot) => {
-         Promise.all(asyncDelete).then((deleteresult) => {
-              console.log("removed buckets");
-              //  empty the array
-                push_array = [];
-                console.log("final length "+push_array.length);
-                var stream = fs.createWriteStream("config.txt");
-                  stream.once('open', function(fd) {
-                  stream.write("TRUE");
-                  stream.end();
-                  push_array = [];
-
-                  Promise.all(asyncTask)
-                            .then((result) => {
-                                console.log(result);
-                                console.log("sent message");
-                                push_array = [];
-                            })
-                            .catch(err => {
-                            console.log(err);
-                           // push_array = [];
-                            //rewriteFile();
-                  });
-
-                });
-             })
-             .catch(err => {
-               console.log(err);
-               push_array = [];
-               rewriteFile();
-             });
-           })
-         .catch(err => {
-         console.log(err);
-         push_array = [];
-         rewriteFile();
-       });
-
-  console.log("finished all the jobs");
- });
-}
 
 function rewriteFile(){
   var stream = fs.createWriteStream("config.txt");
