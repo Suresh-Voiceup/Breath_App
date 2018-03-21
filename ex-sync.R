@@ -18,8 +18,8 @@ df=data.frame(imgGrey[,,,1])
 mean=apply(df,1,mean)
 #Calculates standard deviation
 sd=sd(mean)
-#Tests if the SD is above 0.019, and outputs TRUE on breath
-0.1<sd
+#Tests if the SD is above 0.019 , and outputs TRUE on breath
+0.005<sd
 args[1]
 args[2]
 args[3]
